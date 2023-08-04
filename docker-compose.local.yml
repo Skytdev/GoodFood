@@ -1,0 +1,67 @@
+version: "3.7"
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.local
+    container_name: goodfood_api
+    ports:
+      - 8000:8000
+    volumes:
+      - ./:/var/www
+      - ./conf/php.ini:/usr/local/etc/php/conf.d/app.ini
+    networks:
+      - sql-net
+
+  db:
+    image: mysql:5.7
+    restart: always
+    container_name: goodfood_db
+    environment:
+      MYSQL_DATABASE: "goodfood"
+      MYSQL_USER: "user"
+      MYSQL_PASSWORD: "password"
+      MYSQL_ROOT_PASSWORD: "password"
+    ports:
+      - "3306:3306"
+    volumes:
+      - db-data:/var/lib/mysql
+    networks:
+      - sql-net
+
+  phpmyadmin:
+    image: phpmyadmin
+    container_name: goodfood_phpmyadmin
+    restart: always
+    depends_on:
+      - db
+    ports:
+      - 8080:80
+    environment:
+      PMA_HOST: db
+    networks:
+      - sql-net
+
+  portainer:
+    image: portainer/portainer-ce:latest
+    container_name: portainer
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    volumes:
+      - /etc/localtime:/etc/localtime:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - portainer:/data
+    ports:
+      - 9000:9000
+    networks:
+      - sql-net
+
+volumes:
+  portainer:
+  db-data:
+    external: true
+
+networks:
+  sql-net:
+    external: true

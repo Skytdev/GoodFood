@@ -1,0 +1,79 @@
+security:
+    enable_authenticator_manager: true
+    # https://symfony.com/doc/current/security.html#registering-the-user-hashing-passwords
+    password_hashers:
+        Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface: 'auto'
+        App\Entity\Employee:
+            algorithm: auto
+        App\Entity\Customer:
+            algorithm: auto
+    # https://symfony.com/doc/current/security.html#loading-the-user-the-user-provider
+    providers:
+        chain_provider:
+            chain:
+                providers: ['app_employee_provider', 'app_customer_provider']
+        # used to reload user from session & other features (e.g. switch_user)
+        app_employee_provider:
+            entity:
+                class: App\Entity\Employee
+                property: email
+        app_customer_provider:
+            entity:
+                class: App\Entity\Customer
+                property: email
+    firewalls:
+        # put it before all your other firewall API entries
+        api_token_refresh:
+            pattern: ^/api/token_refresh
+            stateless: true
+            refresh_jwt:
+                provider: chain_provider
+        login:
+            pattern: ^/api/employee/login_check
+            stateless: true
+            provider: app_employee_provider
+            json_login:
+                username_path: email
+                check_path: api_login_check_employee
+                success_handler: lexik_jwt_authentication.handler.authentication_success
+                failure_handler: lexik_jwt_authentication.handler.authentication_failure
+        login_customer:
+            pattern: ^/api/customer/login_check
+            stateless: true
+            provider: app_customer_provider
+            json_login:
+                username_path: email
+                check_path: api_login_check_customer
+                success_handler: lexik_jwt_authentication.handler.authentication_success
+                failure_handler: lexik_jwt_authentication.handler.authentication_failure
+        api:
+            pattern: ^/api
+            stateless: true
+            jwt: ~
+            provider: chain_provider
+        dev:
+            pattern: ^/(_(profiler|wdt)|css|images|js)/
+            security: false
+        # main:
+        #     lazy: true
+        #     provider: app_user_provider
+        #     custom_authenticator: App\Security\AppCustomAuthenticator
+        #     logout:
+        #         path: app_logout
+                # where to redirect after logout
+                # target: app_any_route
+
+            # activate different ways to authenticate
+            # https://symfony.com/doc/current/security.html#the-firewall
+
+            # https://symfony.com/doc/current/security/impersonating_user.html
+            # switch_user: true
+
+    access_control:
+        - { path: ^/api/customer/login_check, roles: PUBLIC_ACCESS }
+        - { path: ^/api/employee/login_check, roles: PUBLIC_ACCESS }
+        - { path: ^/api/token_refresh, roles: PUBLIC_ACCESS }
+        - { path: ^/docs, roles: PUBLIC_ACCESS } # Allows accessing API documentations and Swagger UI
+        - { path: ^/api, roles: PUBLIC_ACCESS }
+        # - { path: ^/admin, roles: ROLE_ADMIN }
+        # - { path: ^/profile, roles: ROLE_USER }
